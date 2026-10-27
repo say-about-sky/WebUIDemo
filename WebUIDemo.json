@@ -1,0 +1,8 @@
+{
+  "id": "com.saysky.webdemo",
+  "name": "Web UI Demo",
+  "version": "0.1.0",
+  "mainClass": "com.saysky.webdemo.WebDemoPlugin",
+  "trusted": true,
+  "description": "LoaderSettings WebUI test plugin: main-menu button + native frame + WebView + hot reload"
+}

@@ -1,0 +1,25 @@
+id=event_demo.1
+title=Hot Plugin Event Demo
+desc=Loaded by AOH3.eventFile('event/event_demo.txt')
+
+show_in_missions=true
+mission_image=0
+
+only_once=false
+
+trigger_and
+next_and
+random_chance=100
+trigger_and_end
+
+option_btn
+name=OK (+100 gold)
+ai=100
+gold=100
+option_end
+
+option_btn
+name=OK (+20 legacy)
+ai=50
+legacy=20
+option_end

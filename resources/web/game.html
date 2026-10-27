@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<!-- webdemo-v8-api -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Game Cmd Test</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#121821;color:#e8eef6;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  body{display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box;overflow:auto}
+  h1{font-size:17px;margin:0}
+  h2{font-size:13px;margin:4px 0 0;opacity:.8;font-weight:600}
+  button{padding:9px 12px;font-size:14px;border-radius:8px;border:1px solid #4a6a8a;
+    background:linear-gradient(#2a3d52,#1a2836);color:#eaf2ff}
+  input{flex:1;min-width:90px;padding:9px;border-radius:8px;border:1px solid #35506b;
+    background:#0b1118;color:#eaf2ff}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  pre{margin:0;background:#0b1118;border:1px solid #24384c;border-radius:8px;padding:8px;
+    font-size:12px;white-space:pre-wrap;word-break:break-all}
+  .hint{font-size:11px;opacity:.75;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>游戏运行时测试</h1>
+<pre id="status">...</pre>
+<div class="row">
+  <button id="gold">金币 +100</button>
+  <button id="refresh">刷新状态</button>
+</div>
+<div class="row">
+  <input id="cmd" placeholder="控制台命令，如 gold 100 或 gold=100">
+  <button id="send">发送</button>
+</div>
+
+<h2>普通事件（原版事件表 / 插件 resources 里的 txt）</h2>
+<div class="row">
+  <input id="eid" value="event_demo.1" placeholder="事件 id">
+  <input id="epath" value="event/event_demo.txt" placeholder="插件内路径（可空）">
+</div>
+<div class="row">
+  <button id="fire">触发事件</button>
+  <button id="findev">查找事件</button>
+</div>
+
+<h2>任务事件（missionsEvents / 剧本 events 目录）</h2>
+<div class="row">
+  <input id="mid" value="J9MIad" placeholder="任务事件 id">
+</div>
+<div class="row">
+  <input id="mpath" value="game/missions/missionsEvents/administrative_buildings.txt" placeholder="asset 路径（可空=按 id 查找）">
+</div>
+<div class="row">
+  <button id="mfire">触发任务事件</button>
+  <button id="mfind">查找任务事件</button>
+</div>
+
+<pre id="out">ready</pre>
+<div class="hint">
+  gold 无参 = 原版固定 +500，带参（gold 100 / gold=100）由补丁钩子精确处理。<br>
+  普通事件：AOH3.event(id, path)，path 相对插件 resources；找不到 id 时会先解析该文件。<br>
+  任务事件：AOH3.missionsEvent(id, assetPath)，assetPath 是 assets 内路径；留空则自动按 id 查找。<br>
+  触发成功会自动关闭本页面并退出暂停菜单。
+</div>
+<script src="game.js"></script>
+</body>
+</html>

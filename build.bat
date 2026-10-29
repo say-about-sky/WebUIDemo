@@ -12,8 +12,8 @@ if defined JAVA_HOME set "JDK=%JAVA_HOME%"
 if not defined JDK for /d %%D in ("C:\Program Files\Microsoft\jdk-*") do set "JDK=%%D"
 if not defined JDK for /d %%D in ("C:\Program Files\Java\jdk-*") do set "JDK=%%D"
 if not defined JDK ( echo [ERR] JDK11 not found - set JAVA_HOME & exit /b 1 )
-set "HJAR=%GAME%\HotPluginLoader\build\libs\HotPluginLoader-0.2.0.jar"
-set "APIJAR=%GAME%\LoaderSettings\out\ui-api.jar"
+if not defined HJAR for %%F in ("%GAME%\HotPluginLoader\build\libs\HotPluginLoader-*.jar") do set "HJAR=%%~fF"
+if not defined APIJAR set "APIJAR=%GAME%\LoaderSettings\out\ui-api.jar"
 set "DEST=%GAME%\hotplugins"
 
 if not exist "%HJAR%" (

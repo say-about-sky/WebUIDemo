@@ -19,7 +19,12 @@ LoaderSettings WebUI + **UI API v1** 的测试插件。
 
 ## 构建/部署
 
-> **工具链/路径**:`build.bat` 的游戏根默认取脚本上一级,可用环境变量 `AOH_GAME_ROOT` 覆盖;
+```powershell
+.\WebUIDemo\build.ps1   # 一键：自动备宿主 jar；缺 ui-api.jar 时从 LoaderSettings 源码现场编译
+.\WebUIDemo\build.bat   # 依赖已就绪时的直接构建（会部署到 hotplugins\）
+```
+
+> **工具链/路径**:游戏根默认取脚本上一级,可用环境变量 `AOH_GAME_ROOT` 覆盖;
 > JDK 取 `JAVA_HOME`,否则自动找 `C:\Program Files\{Microsoft,Java}\jdk-*`。
 > 编译依赖 `HotPluginLoader\build\libs\HotPluginLoader-0.2.0.jar` 与 `LoaderSettings\out\ui-api.jar`
 > 都不进版本库(`build\`、`out\`、`*.jar` 已在 `.gitignore` 中)。

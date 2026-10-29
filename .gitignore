@@ -1,10 +1,12 @@
 # build outputs
 build/
 out/
+.gradle/
 
 # binaries / logs
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.log
 
 # IDE / local environment

@@ -1,0 +1,76 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.saysky'
+version = '0.1.0'
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+}
+
+// ---------------------------------------------------------------------------
+// 路径解析（Gradle 内完成，无外部脚本）
+//   AOH_GAME_ROOT / -PgameRoot   游戏根（默认本工程上一级）
+//   -PhostJar= / 自动发现       HotPluginLoader 宿主 jar
+//   -PuiApiJar= / 自动发现      LoaderSettings 的 ui-api.jar
+// ---------------------------------------------------------------------------
+def gameRoot = System.getenv('AOH_GAME_ROOT') ?: findProperty('gameRoot') ?: rootDir.parentFile
+
+def hostJarProp = findProperty('hostJar') as String
+def hostJar = hostJarProp ? file(hostJarProp) : (file("${gameRoot}/HotPluginLoader/build/libs")
+        .listFiles()
+        ?.findAll { it.name.startsWith('HotPluginLoader-') && it.name.endsWith('.jar') }
+        ?.sort { a, b -> b.lastModified() <=> a.lastModified() }
+        ?.find { true })
+
+def uiApiJarProp = findProperty('uiApiJar') as String
+def uiApiJar = uiApiJarProp ? file(uiApiJarProp)
+        : file("${gameRoot}/LoaderSettings/out/ui-api.jar")
+
+sourceSets {
+    main {
+        java { srcDirs = ['src'] }
+        resources { srcDirs = [] }
+    }
+}
+
+dependencies {
+    if (hostJar != null) {
+        compileOnly files(hostJar)
+    }
+    if (uiApiJar.exists()) {
+        compileOnly files(uiApiJar)
+    }
+}
+
+tasks.named('compileJava') {
+    doFirst {
+        if (hostJar == null || !hostJar.exists()) {
+            throw new GradleException('HotPluginLoader jar not found\n' +
+                    '  build it first (HotPluginLoader\\gradlew.bat shadowJar) or pass -PhostJar=<jar>')
+        }
+        if (!uiApiJar.exists()) {
+            throw new GradleException("ui-api.jar not found: ${uiApiJar}\n" +
+                    '  build LoaderSettings first (LoaderSettings\\gradlew.bat dex) or pass -PuiApiJar=<jar>')
+        }
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar { enabled = false }
+shadowJar {
+    archiveFileName = 'WebUIDemo.jar'
+    destinationDirectory = file("$projectDir/out")
+    archiveClassifier.set("")
+}

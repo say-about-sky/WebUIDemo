@@ -3,7 +3,8 @@
 > **简介**:演示**热插件的 Web UI 能力** —— 主菜单按钮 + 原生弹窗框架 + 系统 WebView 页面,
 > `AOH3` / `AOHCache` 两个 JS 桥,游戏内命令 / 事件调用,以及热重载与缓存。
 >
-> **快速开始**:① `build.bat` → ② `out\WebUIDemo.jar` → ③ 脚本会把 jar / 清单 / `resources\` 自动部署到 `hotplugins\`。
+> **快速开始**:① `build.ps1`(或 `build.bat`) → ② `out\WebUIDemo.jar`（只有产物，不自动部署）→
+> ③ 自行把 jar + `WebUIDemo.json` 复制到 `<游戏根>\hotplugins\`，`resources\` 复制到 `hotplugins\resources\WebUIDemo\`。
 > **依赖**(不进版本库):JDK 11+、`HotPluginLoader-0.2.0.jar`、`LoaderSettings\out\ui-api.jar`。
 > **许可**:GPL-3.0,见 `LICENSE.TXT`。
 > **隐私**:不收集任何数据;示例页面只用假域名 `https://webdemo.local/` 演示离线缓存,不会真正联网。
@@ -17,30 +18,25 @@ LoaderSettings WebUI + **UI API v1** 的测试插件。
 2. `build.bat` 的 javac classpath = `HotPluginLoader.jar + ui-api.jar`；
    **不要把 ui-api.jar 里的类打进插件 jar**（运行时由补丁 dex 提供）。
 
-## 构建/部署
+## 构建
 
 ```powershell
 .\WebUIDemo\build.ps1   # 一键：自动备宿主 jar；缺 ui-api.jar 时从 LoaderSettings 源码现场编译
-.\WebUIDemo\build.bat   # 依赖已就绪时的直接构建（会部署到 hotplugins\）
+.\WebUIDemo\build.bat   # 依赖已就绪时的直接构建
+```
+
+只产出构建产物，不会向游戏目录写任何东西：
+
+```text
+WebUIDemo\out\WebUIDemo.jar     ← 复制到 <游戏根>\hotplugins\
+WebUIDemo\WebUIDemo.json        ← 复制到 <游戏根>\hotplugins\
+WebUIDemo\resources\            ← 复制到 <游戏根>\hotplugins\resources\WebUIDemo\
 ```
 
 > **工具链/路径**:游戏根默认取脚本上一级,可用环境变量 `AOH_GAME_ROOT` 覆盖;
 > JDK 取 `JAVA_HOME`,否则自动找 `C:\Program Files\{Microsoft,Java}\jdk-*`。
 > 编译依赖 `HotPluginLoader\build\libs\HotPluginLoader-0.2.0.jar` 与 `LoaderSettings\out\ui-api.jar`
 > 都不进版本库(`build\`、`out\`、`*.jar` 已在 `.gitignore` 中)。
-
-```powershell
-.\WebUIDemo\build.bat
-```
-
-会把以下内容部署到游戏根目录：
-
-```text
-hotplugins\WebUIDemo.jar
-hotplugins\WebUIDemo.json
-hotplugins\resources\WebUIDemo\web\index.html
-hotplugins\resources\WebUIDemo\web\app.js
-```
 
 ## 游戏内测试
 

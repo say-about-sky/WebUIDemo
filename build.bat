@@ -1,7 +1,8 @@
 @echo off
 rem ============================================================================
-rem  WebUIDemo - build the demo hot plugin and deploy it into hotplugins/
-rem  Requires: HotPluginLoader/build/libs/HotPluginLoader-0.2.0.jar
+rem  WebUIDemo - build the demo hot plugin (build only, no deployment)
+rem  Output: out\WebUIDemo.jar
+rem  Requires: HotPluginLoader jar + LoaderSettings\out\ui-api.jar
 rem ============================================================================
 setlocal
 set "HERE=%~dp0"
@@ -14,7 +15,6 @@ if not defined JDK for /d %%D in ("C:\Program Files\Java\jdk-*") do set "JDK=%%D
 if not defined JDK ( echo [ERR] JDK11 not found - set JAVA_HOME & exit /b 1 )
 if not defined HJAR for %%F in ("%GAME%\HotPluginLoader\build\libs\HotPluginLoader-*.jar") do set "HJAR=%%~fF"
 if not defined APIJAR set "APIJAR=%GAME%\LoaderSettings\out\ui-api.jar"
-set "DEST=%GAME%\hotplugins"
 
 if not exist "%HJAR%" (
   echo [ERR] missing HotPluginLoader jar: "%HJAR%"
@@ -31,37 +31,19 @@ if exist build rmdir /s /q build
 mkdir build\classes 2>nul
 mkdir out 2>nul
 
-echo [1/4] javac ...
+echo [1/2] javac ...
 "%JDK%\bin\javac.exe" -encoding UTF-8 -source 8 -target 8 -nowarn -cp "%HJAR%;%APIJAR%" -d build\classes ^
   src\com\saysky\webdemo\WebDemoPlugin.java
 if errorlevel 1 goto :fail
 
-echo [2/4] jar ...
+echo [2/2] jar ...
 "%JDK%\bin\jar.exe" cfM out\WebUIDemo.jar -C build\classes .
 if errorlevel 1 goto :fail
 
-echo [3/4] deploy jar + manifest ...
-if not exist "%DEST%" mkdir "%DEST%"
-copy /y out\WebUIDemo.jar "%DEST%\WebUIDemo.jar" >nul
-copy /y WebUIDemo.json "%DEST%\WebUIDemo.json" >nul
-if errorlevel 1 goto :fail
-
-rem remove stale converted artifacts so the loader converts the fresh jar next scan
-if exist "%DEST%\WebUIDemo.dex" del /q "%DEST%\WebUIDemo.dex"
-if exist "%DEST%\WebUIDemo.jar.done" del /q "%DEST%\WebUIDemo.jar.done"
-if exist "%DEST%\dex\WebUIDemo.dex" del /q "%DEST%\dex\WebUIDemo.dex"
-if exist "%DEST%\jar\WebUIDemo.jar.done" del /q "%DEST%\jar\WebUIDemo.jar.done"
-if exist "%DEST%\jar\WebUIDemo.jar" del /q "%DEST%\jar\WebUIDemo.jar"
-
-echo [4/4] deploy resources (web + event) ...
-if not exist "%DEST%\resources\WebUIDemo" mkdir "%DEST%\resources\WebUIDemo"
-xcopy /e /i /y /q resources "%DEST%\resources\WebUIDemo" >nul
-if errorlevel 1 goto :fail
-
-echo DONE.
-echo   %DEST%\WebUIDemo.jar
-echo   %DEST%\WebUIDemo.json
-echo   %DEST%\resources\WebUIDemo\
+echo DONE. build artifacts (copy into the game yourself):
+echo   %HERE%out\WebUIDemo.jar      -^> hotplugins\
+echo   %HERE%WebUIDemo.json         -^> hotplugins\
+echo   %HERE%resources\             -^> hotplugins\resources\WebUIDemo\
 exit /b 0
 
 :fail

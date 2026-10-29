@@ -37,6 +37,22 @@ WebUIDemo\resources\            ← 复制到 <游戏根>\hotplugins\resources\W
 > 默认自动定位且都是纯 `compileOnly`(不会打进插件 jar);可用 `-PhostJar=` / `-PuiApiJar=` 或 `AOH_GAME_ROOT` 覆盖。
 > 两者都不进版本库(`build\`、`out\`、`*.jar` 已在 `.gitignore` 中)。
 
+### 构建加速（国内网络）
+
+- 镜像顺序：阿里云 `gradle-plugin` → 阿里云 `public` → 华为云 → `mavenCentral()`（兜底）；
+  `settings.gradle` 的 `pluginManagement` 专门给 shadow 插件配了镜像。
+- `gradle.properties` 已开 `daemon / parallel / caching / vfs.watch` + 2 GB 堆，增量构建 ≈1 s。
+- Gradle 发行包走腾讯云镜像（3.7 MB/s）。
+
+### IntelliJ IDEA 运行/调试配置
+
+`.run\` 内的配置打开工程即生效：
+
+| 配置 | 类型 | 作用 |
+|---|---|---|
+| 构建 jar（gradle shadowJar） | Gradle | 出 `out\WebUIDemo.jar` |
+| 调试游戏（桌面 JDWP 5005） | Remote JVM Debug | 先 `StartFinality-jdwp.bat` 启动游戏再 Debug |
+
 ## 游戏内测试
 
 1. 安装带 `LoaderSettings\out\classes.dex` 的 APK（前置为 `classes.dex`，冷启动）；

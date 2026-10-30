@@ -21,36 +21,17 @@ LoaderSettings WebUI + **UI API v1** 的测试插件。
 ## 构建
 
 ```bat
-WebUIDemo\gradlew.bat build        rem = shadowJar + dex（推荐）
-WebUIDemo\gradlew.bat shadowJar   rem 只出 jar: out\WebUIDemo.jar
-WebUIDemo\gradlew.bat dex         rem 只出 dex: out\WebUIDemo.dex（构建期 D8）
+WebUIDemo\gradlew.bat shadowJar   rem 纯 Gradle:产物 out\WebUIDemo.jar
+WebUIDemo\build.bat               rem 同一命令的批处理包装
 ```
 
 只产出构建产物，不会向游戏目录写任何东西：
 
 ```text
 WebUIDemo\out\WebUIDemo.jar     ← 复制到 <游戏根>\hotplugins\
-WebUIDemo\out\WebUIDemo.dex     ← 备用：复制到 <游戏根>\hotplugins\dex\（跳过设备端 D8）
 WebUIDemo\WebUIDemo.json        ← 复制到 <游戏根>\hotplugins\
 WebUIDemo\resources\            ← 复制到 <游戏根>\hotplugins\resources\WebUIDemo\
 ```
-
-### 设备端 D8 转换失败时（备用路径）
-
-真机日志出现下面这种，说明宿主「内置 D8 把 jar 转 dex」在设备上失败了（**jar 本身没问题**：同一个 jar 在 PC 上用同版本 r8 能正常转）：
-
-```text
-HotLoader/d8: convert failed: WebUIDemo.jar -> java.lang.Exception: D8 转换失败:
-  Compilation failed to complete, origin: .../WebDemoPlugin$1.class
-  [java.lang.NullPointerException: Attempt to invoke virtual method 'int java.lang.String.length()' on a null object reference]
-```
-
-此时用构建期已经转好的 dex，完全绕开设备端 D8：
-
-1. `gradlew.bat dex` → `out\WebUIDemo.dex`；
-2. 删掉 `hotplugins\jar\WebUIDemo.jar`（否则宿主会继续尝试转换）；
-3. `out\WebUIDemo.dex` 复制到 `hotplugins\dex\WebUIDemo.dex`；
-4. 重启游戏（或在面板里「全部重载」）。宿主会为裸 dex 自动生成清单（`DexManifest`）并直接加载。
 
 > **依赖/路径**:编译期依赖 `HotPluginLoader\build\libs\HotPluginLoader-*.jar` 与 `LoaderSettings\out\ui-api.jar`,
 > 默认自动定位且都是纯 `compileOnly`(不会打进插件 jar);可用 `-PhostJar=` / `-PuiApiJar=` 或 `AOH_GAME_ROOT` 覆盖。
@@ -70,7 +51,6 @@ HotLoader/d8: convert failed: WebUIDemo.jar -> java.lang.Exception: D8 转换失
 | 配置 | 类型 | 作用 |
 |---|---|---|
 | 构建 jar（gradle shadowJar） | Gradle | 出 `out\WebUIDemo.jar` |
-| 构建 dex（gradle dex） | Gradle | 出 `out\WebUIDemo.dex`（构建期 D8，设备端转换失败时用） |
 | 调试游戏（桌面 JDWP 5005） | Remote JVM Debug | 先 `StartFinality-jdwp.bat` 启动游戏再 Debug |
 
 ## 游戏内测试
@@ -94,15 +74,11 @@ HotLoader/d8: convert failed: WebUIDemo.jar -> java.lang.Exception: D8 转换失
 改页面不需要重新编译 jar。
 
 8. 进入**存档**后按 Esc 打开暂停菜单：新增 `游戏命令` 行（`Pages.PAUSE`，插在标题条下方；不再放百科全书页——那里的行会被分节标题裁掉）→
-   打开 `game.html`，四类测试：
+   打开 `game.html`，三类测试：
    - 控制台：`金币 +100`（`AOH3.game('gold 100')`）与任意命令输入框；
-   - 普通事件（event 目录）：`AOH3.event(id)` 全局查找触发 / `AOH3.findEvent(id, path)` 只在该 path 下找；
-   - 任务事件（MissionsEvent 目录）：`AOH3.missionsEvent(id)` 全局 / `AOH3.findMissionsEvent(id, path)` 只在该 path 下找；
-   - `path` 支持 `<game>` 前缀（显式声明游戏内部资源目录），按真实布局写：
-     `<game>/assets/game/events`、`<game>/assets/game/missions/missionsEvents`、
-     `<game>/assets/map/<地图>/scenarios/<剧本>`；等价于资源内路径 `game/events` 等。
-     默认示例 `J9MIad @ <game>/assets/game/missions/missionsEvents`（注意 id 里是**大写 I**）。
-   四个接口都做了错误处理：未读档 `rejected: no active save`，找不到 `rejected: not found ...`（附归一化路径），不抛异常。
+   - 普通事件：`AOH3.event(id, path)`（path=插件 resources 相对，可空）+ `AOH3.findEvent(id)`；
+   - 任务事件：`AOH3.missionsEvent(id, assetPath)`（assetPath 可空=自动按 id 查找）+ `AOH3.findMissionsEvent(id)`；
+     默认示例 `J9MIad @ game/missions/missionsEvents/administrative_buildings.txt`（注意 id 里是**大写 I**）。
 6. 点击页面中间的按钮：
    - 页面内计数 +1；
    - 游戏底部出现原生 Toast：`Clicked: N`；

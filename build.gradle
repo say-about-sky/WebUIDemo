@@ -8,8 +8,6 @@ version = '0.1.0'
 
 repositories {
     maven { url 'https://maven.aliyun.com/repository/public' }
-    // r8/d8(构建期出 dex 用)
-    maven { url 'https://maven.aliyun.com/repository/google' }
     mavenCentral()
 }
 
@@ -79,89 +77,3 @@ shadowJar {
 
 // jar 被关掉后 build 不会自动带上 shadowJar，这里补上
 tasks.named('build') { dependsOn tasks.named('shadowJar') }
-
-// ---------------------------------------------------------------------------
-// 构建期 D8：直接产出 out\WebUIDemo.dex
-//   用途：设备端宿主的「内置 D8 转换」失败时，把 .dex 直接丢进 hotplugins\dex\
-//         （宿主会给裸 dex 自动生成清单，不再走 jar→dex）
-//   参数与宿主 JarToDex 一致：--release --min-api 26，不给 --lib
-// ---------------------------------------------------------------------------
-configurations { d8Tool }
-
-dependencies {
-    d8Tool 'com.android.tools:r8:8.6.27'
-}
-
-// JDK 11+ 发现（r8 自身需要 11+；IDEA 的 Gradle JVM 可能是 8）
-def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-def jdkExe = { File home, String tool -> new File(home, "bin/${tool}${isWindows ? '.exe' : ''}") }
-def isJdk = { File home -> home != null && jdkExe(home, 'javac').exists() }
-def jdkMajorOf = { File home ->
-    def rel = new File(home, 'release')
-    if (rel.exists()) {
-        def m = rel.text =~ /JAVA_VERSION="(\d+)/
-        if (m.find()) return m.group(1) as int
-    }
-    return 0
-}
-def findJdk = { int minMajor ->
-    def found = []
-    def add = { String p -> if (p) { def f = file(p); if (isJdk(f)) found << f } }
-    add(findProperty('jdkHome') as String)
-    add(System.getenv('AOH_JDK'))
-    add(System.getenv('JAVA_HOME'))
-    ['C:/Program Files/Microsoft', 'C:/Program Files/Java', 'C:/Program Files/Eclipse Adoptium',
-     'C:/Program Files/AdoptOpenJDK', 'C:/Program Files/Zulu', 'C:/Program Files/Amazon Corretto',
-     'C:/Program Files/BellSoft'].each { base ->
-        def d = file(base)
-        if (d.isDirectory()) d.listFiles()?.each { sub -> if (isJdk(sub)) found << sub }
-    }
-    found.collect().each { j ->
-        if (j.isDirectory()) j.listFiles()?.each { sub -> if (isJdk(sub)) found << sub }
-    }
-    found.unique().findAll { jdkMajorOf(it) >= minMajor }
-            .sort { a, b -> jdkMajorOf(a) <=> jdkMajorOf(b) }
-            .find()
-}
-def currentJvmMajor = {
-    def m = System.getProperty('java.version') =~ /^(\d+)/
-    m.find() ? (m.group(1) as int) : 0
-}()
-def jdk11Home = (currentJvmMajor >= 11 && isJdk(file(System.getProperty('java.home'))))
-        ? file(System.getProperty('java.home')) : findJdk(11)
-
-tasks.register('dex') {
-    group = 'build'
-    description = '构建期用 D8 直接出 out/WebUIDemo.dex（设备端转换失败时的兜底）'
-    dependsOn tasks.named('shadowJar')
-    def pluginJar = tasks.named('shadowJar').flatMap { it.archiveFile }
-    inputs.file(pluginJar)
-    outputs.file(file("$projectDir/out/WebUIDemo.dex"))
-    doLast {
-        def r8 = configurations.d8Tool.files.find { it.name.startsWith('r8-') }
-        if (r8 == null) throw new GradleException('r8 未解析：检查 build.gradle 的 d8Tool 依赖')
-        if (jdk11Home == null) throw new GradleException('需要 JDK 11+ 跑 D8（设 JAVA_HOME 或 -PjdkHome=）')
-        def tmp = file("$buildDir/dex-tmp")
-        delete(tmp)
-        tmp.mkdirs()
-        def log = file("$buildDir/dex/d8.log")
-        log.parentFile.mkdirs()
-        def pb = new ProcessBuilder(jdkExe(jdk11Home, 'java').absolutePath,
-                '-cp', r8.absolutePath, 'com.android.tools.r8.D8',
-                '--release', '--min-api', '26',
-                '--output', tmp.absolutePath, pluginJar.get().asFile.absolutePath)
-        pb.redirectErrorStream(true)
-        pb.redirectOutput(ProcessBuilder.Redirect.to(log))
-        def rc = pb.start().waitFor()
-        def classesDex = new File(tmp, 'classes.dex')
-        if (rc != 0 || !classesDex.exists()) {
-            throw new GradleException("D8 失败 (exit ${rc})；日志: ${log}\n" +
-                    (log.exists() ? log.readLines('UTF-8').takeRight(20).join('\n') : ''))
-        }
-        def outDex = file("$projectDir/out/WebUIDemo.dex")
-        outDex.bytes = classesDex.bytes
-        logger.lifecycle("产物: ${outDex} (${outDex.length()} B) -> 可直接放到 hotplugins\\dex\\")
-    }
-}
-
-tasks.named('build') { dependsOn tasks.named('dex') }

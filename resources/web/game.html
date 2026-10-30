@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-<!-- webdemo-v8-api -->
+<!-- webdemo-v9-events -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -8,14 +8,15 @@
 <style>
   html,body{margin:0;padding:0;height:100%;background:#121821;color:#e8eef6;
     font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
-  body{display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box;overflow:auto}
-  h1{font-size:17px;margin:0}
-  h2{font-size:13px;margin:4px 0 0;opacity:.8;font-weight:600}
-  button{padding:9px 12px;font-size:14px;border-radius:8px;border:1px solid #4a6a8a;
+  body{display:flex;flex-direction:column;gap:6px;padding:10px;box-sizing:border-box;overflow:auto}
+  h1{font-size:16px;margin:0}
+  h2{font-size:13px;margin:6px 0 0;opacity:.85;font-weight:600}
+  button{padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid #4a6a8a;
     background:linear-gradient(#2a3d52,#1a2836);color:#eaf2ff}
-  input{flex:1;min-width:90px;padding:9px;border-radius:8px;border:1px solid #35506b;
+  input{min-width:80px;padding:8px;border-radius:8px;border:1px solid #35506b;
     background:#0b1118;color:#eaf2ff}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .grow{flex:1}
   pre{margin:0;background:#0b1118;border:1px solid #24384c;border-radius:8px;padding:8px;
     font-size:12px;white-space:pre-wrap;word-break:break-all}
   .hint{font-size:11px;opacity:.75;line-height:1.5}
@@ -26,41 +27,38 @@
 <pre id="status">...</pre>
 <div class="row">
   <button id="gold">金币 +100</button>
-  <button id="refresh">刷新状态</button>
-</div>
-<div class="row">
-  <input id="cmd" placeholder="控制台命令，如 gold 100 或 gold=100">
+  <input id="cmd" class="grow" placeholder="控制台命令：gold 100 或 gold=100">
   <button id="send">发送</button>
 </div>
 
-<h2>普通事件（原版事件表 / 插件 resources 里的 txt）</h2>
+<h2>事件 event（原版 game/events + 剧本 events + 插件 resources/event）</h2>
 <div class="row">
   <input id="eid" value="event_demo.1" placeholder="事件 id">
-  <input id="epath" value="event/event_demo.txt" placeholder="插件内路径（可空）">
+  <button id="ev">全局 event(id)</button>
 </div>
 <div class="row">
-  <button id="fire">触发事件</button>
-  <button id="findev">查找事件</button>
+  <input id="epath" class="grow" value="<game>/assets/game/events" placeholder="目录：<game>/assets/game/events 或 game/events">
+  <button id="fev">findEvent(id, path)</button>
 </div>
 
-<h2>任务事件（missionsEvents / 剧本 events 目录）</h2>
+<h2>任务事件 missionsEvent（missionsEvents 目录）</h2>
 <div class="row">
   <input id="mid" value="J9MIad" placeholder="任务事件 id">
+  <button id="mev">全局 missionsEvent(id)</button>
 </div>
 <div class="row">
-  <input id="mpath" value="game/missions/missionsEvents/administrative_buildings.txt" placeholder="asset 路径（可空=按 id 查找）">
-</div>
-<div class="row">
-  <button id="mfire">触发任务事件</button>
-  <button id="mfind">查找任务事件</button>
+  <input id="mpath" class="grow" value="<game>/assets/game/missions/missionsEvents" placeholder="目录：<game>/assets/game/missions 或剧本目录">
+  <button id="fmev">findMissionsEvent(id, path)</button>
 </div>
 
 <pre id="out">ready</pre>
 <div class="hint">
-  gold 无参 = 原版固定 +500，带参（gold 100 / gold=100）由补丁钩子精确处理。<br>
-  普通事件：AOH3.event(id, path)，path 相对插件 resources；找不到 id 时会先解析该文件。<br>
-  任务事件：AOH3.missionsEvent(id, assetPath)，assetPath 是 assets 内路径；留空则自动按 id 查找。<br>
-  触发成功会自动关闭本页面并退出暂停菜单。
+  四个事件接口都是「查找定位 → 载入（注册进原版事件表）→ 触发」；未读档返回 rejected，找不到只返回 not found，不会报错。<br>
+  path 可用 <code>&lt;game&gt;</code> 前缀显式声明「游戏内部资源目录」，按真实布局写：
+  <code>&lt;game&gt;/assets/game/events</code>、<code>&lt;game&gt;/assets/map/&lt;map&gt;/scenarios/&lt;剧本&gt;</code>；
+  不写前缀时按资源内路径（<code>game/events</code>）理解。<br>
+  全局版会搜索所有候选目录（含当前剧本与插件自己的 resources 子目录）；find 版只搜给定 path 下的 event / MissionsEvent 目录。<br>
+  gold 无参 = 原版固定 +500，带参由补丁钩子精确处理。触发成功会自动关闭本页面并退出暂停菜单。
 </div>
 <script src="game.js"></script>
 </body>

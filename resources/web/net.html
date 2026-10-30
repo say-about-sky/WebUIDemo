@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>网络自检 · WebUIDemo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0f1620; color: #e8eef6;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; }
+  body { display: flex; flex-direction: column; padding: 8px; gap: 8px; overflow: auto; }
+  h1 { font-size: 15px; margin: 0; }
+  h2 { font-size: 12.5px; margin: 6px 0 2px; opacity: .85; font-weight: 600; }
+  button { font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    color: #eaf2ff; background: linear-gradient(#2a3d52, #1a2836); border: 1px solid #4a6a8a; }
+  button:disabled { opacity: .5; }
+  button.primary { background: linear-gradient(#2b5c8a, #21466a); border-color: #3f7099; }
+  input { padding: 6px 8px; border-radius: 8px; border: 1px solid #35506b; background: #0b1118;
+    color: #eaf2ff; font: inherit; font-size: 12px; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; min-width: 140px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #1d2a38; vertical-align: top; }
+  th { opacity: .65; font-weight: 600; }
+  td.st { white-space: nowrap; font-weight: 600; }
+  .ok { color: #8ee6a8; }
+  .bad { color: #ff9a9a; }
+  .warn { color: #ffd979; }
+  .muted { opacity: .65; }
+  pre { margin: 0; background: #0b1118; border: 1px solid #24384c; border-radius: 8px; padding: 8px;
+    font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; }
+  .verdict { border: 1px solid #2f4459; border-radius: 9px; padding: 8px 10px; font-size: 12px;
+    line-height: 1.6; background: #131d28; }
+  .verdict b { color: #ffd979; }
+  iframe { width: 100%; height: 190px; border: 1px solid #24384c; border-radius: 8px; background: #0b1118; }
+  .hint { font-size: 11px; opacity: .7; line-height: 1.5; }
+  code { background: #16202c; padding: 1px 5px; border-radius: 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>网络自检（判断游戏内 WebView 能不能上网 / 能不能访问明文 HTTP）</h1>
+<div class="row">
+  <button id="btn-run" class="primary">开始自检</button>
+  <button id="btn-copy">复制报告</button>
+  <span class="muted" id="summary">尚未执行</span>
+</div>
+
+<div class="verdict" id="verdict">点「开始自检」：会分别探测 HTTPS、明文 HTTP、回环 127.0.0.1 和 DNS 失败对照。</div>
+
+<h2>逐项结果</h2>
+<table>
+  <thead><tr><th>#</th><th>项目</th><th>结果</th><th>详情</th></tr></thead>
+  <tbody id="rows"><tr><td colspan="4" class="muted">—</td></tr></tbody>
+</table>
+
+<h2>手动测试</h2>
+<div class="row">
+  <input id="url" class="grow" value="https://www.baidu.com/" placeholder="https://… 或 http://…">
+  <button id="btn-fetch">fetch</button>
+  <button id="btn-img">图片</button>
+  <button id="btn-frame">载入下方 iframe</button>
+</div>
+<iframe id="frame" title="url test" src="about:blank"></iframe>
+<div class="hint">
+  iframe 里显示 <code>ERR_…</code> 说明这次导航被 WebView/网络层拒绝（例如
+  <code>net::ERR_CLEARTEXT_NOT_PERMITTED</code> = 安卓 9+ 默认禁止明文 HTTP）；
+  站点自己设置 <code>X-Frame-Options</code> 时也会拒绝被 iframe 嵌入，那不代表网络有问题，以 fetch/图片两行为准。
+</div>
+
+<h2>报告（可直接截图 / 复制）</h2>
+<pre id="report">—</pre>
+
+<h2>环境</h2>
+<pre id="env">—</pre>
+
+<script src="net.js"></script>
+</body>
+</html>

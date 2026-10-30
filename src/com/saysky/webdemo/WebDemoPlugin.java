@@ -17,18 +17,23 @@ import com.saysky.ui.api.TextButtonSpec;
  * event demo is {@code resources/event/event_demo.txt}; nothing is generated from Java strings,
  * so the pages can be edited without rebuilding the jar.</p>
  *
- * <p>Entries:</p>
+ * <p>Entries: 全部挂在<b>剧本进行时</b>的暂停菜单(Esc)上,主菜单不再占用按钮(留给 Army3DWeb 等插件):</p>
  * <ul>
- *   <li>main menu {@code Web UI} -&gt; host-built page (index.html / game.html / two windows);</li>
- *   <li>in-game pause menu ({@link Pages#PAUSE}) -&gt; {@code 游戏命令} -&gt; game.html.</li>
+ *   <li>{@code Web UI} -&gt; index.html(缓存 / URL / 快照演示);</li>
+ *   <li>{@code 网络自检} -&gt; net.html;</li>
+ *   <li>{@code 游戏命令} -&gt; game.html(控制台 / 事件引擎);</li>
+ *   <li>{@code 双窗口} -&gt; 同一页面两个独立窗口。</li>
  * </ul>
+ *
+ * <p>{@code net.html} 是网络自检页:分别探测 HTTPS / 明文 HTTP / 回环 127.0.0.1 / DNS 失败,
+ * 用来判断游戏内 WebView 是否被 <b>cleartext 策略</b>(安卓 9+ 默认禁止 http)拦住。</p>
  */
 @HotPluginInfo(
         id = "com.saysky.webdemo",
         name = "Web UI Demo",
-        version = "0.2.0",
+        version = "0.4.0",
         trusted = true,
-        description = "LoaderSettings WebUI demo (pages in resources/web, event demo in resources/event)"
+        description = "LoaderSettings WebUI demo (pages in resources/web, event demo in resources/event, net self-check)"
 )
 public final class WebDemoPlugin implements HotPlugin {
 
@@ -70,36 +75,49 @@ public final class WebDemoPlugin implements HotPlugin {
 
             final String pid = context.id();
 
-            // Main menu entry -> host-built page; the raw dialog is the safety net.
+            // 只挂在「剧本进行时」的暂停菜单(Esc)。主菜单留给其它插件(例如 Army3DWeb 的「3D 调试」)。
+            // 每行都走 WebCore.openDialog → 游戏内 WebView,已实测可用。
+            addPauseButton(pid, "Web UI", "index.html",
+                    "\u7f13\u5b58 / URL / \u5feb\u7167\u6f14\u793a");
+            addPauseButton(pid, "\u7f51\u7edc\u81ea\u68c0", "net.html",
+                    "HTTPS / \u660e\u6587 HTTP / \u56de\u73af 127.0.0.1 \u63a2\u6d4b");
+            addPauseButton(pid, "\u6e38\u620f\u547d\u4ee4", "game.html",
+                    "\u5411\u63a7\u5236\u53f0/\u4e8b\u4ef6\u5f15\u64ce\u53d1\u9001\u6307\u4ee4");
             UiHost.addButton(pid, new TextButtonSpec() {
                 @Override
                 public String pageId() {
-                    return Pages.MAIN_MENU.id();
+                    return Pages.PAUSE.id();
                 }
 
                 @Override
                 public String label() {
-                    return "Web UI";
+                    return "\u53cc\u7a97\u53e3";
                 }
 
                 @Override
                 public String tooltip() {
-                    return "Web UI Demo";
+                    return "\u540c\u4e00\u9875\u9762\u5f00\u4e24\u4e2a\u72ec\u7acb WebView \u7a97\u53e3";
                 }
 
                 @Override
                 public void onClick() {
-                    if (!UiHost.openPage(PAGE_ID)) {
-                        openWeb(pid, "index.html", "Web UI Demo");
-                    }
+                    openTwoWindows(pid);
                 }
             });
 
+            // CustomPage API 演示(host 生成的原生菜单)。暂停菜单里没有它的入口,
+            // 需要时用 UiHost.openPage("webdemo.page") 打开。
             UiHost.addCustomPage(new CustomPage(PAGE_ID, "Web UI")
                     .text("\u6253\u5f00\u7f51\u9875", new Runnable() {
                         @Override
                         public void run() {
                             openWeb(pid, "index.html", "Web UI Demo");
+                        }
+                    })
+                    .text("\u7f51\u7edc\u81ea\u68c0", new Runnable() {
+                        @Override
+                        public void run() {
+                            openWeb(pid, "net.html", "\u7f51\u7edc\u81ea\u68c0");
                         }
                     })
                     .text("\u6e38\u620f\u547d\u4ee4", new Runnable() {
@@ -116,35 +134,36 @@ public final class WebDemoPlugin implements HotPlugin {
                         }
                     }));
 
-            // In-game entry (pause menu, only exists inside a save): console / event runtime test.
-            // NOTE: deliberately NOT on the encyclopedia page - its rows are clipped by the section
-            // headers, the pause menu is a plain button list so a new row fits cleanly.
-            UiHost.addButton(pid, new TextButtonSpec() {
-                @Override
-                public String pageId() {
-                    return Pages.PAUSE.id();
-                }
-
-                @Override
-                public String label() {
-                    return "\u6e38\u620f\u547d\u4ee4";
-                }
-
-                @Override
-                public String tooltip() {
-                    return "\u5411\u63a7\u5236\u53f0/\u4e8b\u4ef6\u5f15\u64ce\u53d1\u9001\u6307\u4ee4";
-                }
-
-                @Override
-                public void onClick() {
-                    openWeb(pid, "game.html", "Game Cmd Test");
-                }
-            });
-
             context.log("UiHost: " + UiHost.status());
         } catch (Throwable t) {
             context.log("WebCore/UI API unavailable (is LoaderSettings installed?): " + t);
         }
+    }
+
+    /** 在「剧本进行时」的暂停菜单加一行,点击用游戏内 WebView 打开 {@code resources/web/<entry>}。 */
+    private static void addPauseButton(final String pluginId, final String rowLabel, final String entry,
+                                      final String tip) {
+        UiHost.addButton(pluginId, new TextButtonSpec() {
+            @Override
+            public String pageId() {
+                return Pages.PAUSE.id();
+            }
+
+            @Override
+            public String label() {
+                return rowLabel;
+            }
+
+            @Override
+            public String tooltip() {
+                return tip;
+            }
+
+            @Override
+            public void onClick() {
+                openWeb(pluginId, entry, rowLabel);
+            }
+        });
     }
 
     private static void openWeb(String pluginId, String entry, String title) {

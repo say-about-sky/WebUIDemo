@@ -89,9 +89,9 @@ WebUIDemo\resources\            ← 复制到 <游戏根>\hotplugins\resources\W
 `build.bat` 会把整个 `resources\` 目录（含 `event\event_demo.txt`）同步到 `hotplugins\resources\WebUIDemo\`，
 改页面不需要重新编译 jar。
 
-> 自定义原生页（`PAGE_ID = webdemo.page`）仍会注册，作为 `CustomPage` API 的演示；暂停菜单没有它的入口，
-> 需要时用 `UiHost.openPage("webdemo.page")` 打开（页内 `打开网页 / 网络自检 / 游戏命令 / 返回设置 / 双窗口`
-> 由 UI API 自动布局）。
+> 暂停菜单里另有「Web UI 面板」一行，点开的是插件自建的**原生 Menu**（`Ui.panel(...)` +
+> `UiMenu.addAll/stack/sync/show`），演示 UiKit 的自有页面写法（页内 `打开网页 / 网络自检 /
+> 游戏命令 / 双窗口`）。
 
 日志：
 

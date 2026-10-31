@@ -33,7 +33,17 @@
   .verdict { border: 1px solid #2f4459; border-radius: 9px; padding: 8px 10px; font-size: 12px;
     line-height: 1.6; background: #131d28; }
   .verdict b { color: #ffd979; }
-  iframe { width: 100%; height: 190px; border: 1px solid #24384c; border-radius: 8px; background: #0b1118; }
+  iframe { width: 100%; height: 190px; flex: 0 0 auto; border: 1px solid #24384c; border-radius: 8px; background: #0b1118; }
+  /* Draggable splitter: touch-friendly grip that resizes the iframe above it. */
+  .splitter { position: relative; height: 22px; margin: -2px 0; display: flex; align-items: center;
+    justify-content: center; cursor: ns-resize; touch-action: none; -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none; }
+  .splitter::before { content: ""; width: 100%; height: 3px; border-radius: 3px; background: #24384c; }
+  .splitter::after { content: ""; position: absolute; width: 52px; height: 8px; border-radius: 4px;
+    background: #35506b; border: 1px solid #4a6a8a; }
+  .splitter:hover::before, .splitter.active::before { background: #4a6a8a; }
+  .splitter.active::after { background: #5c86ab; border-color: #7aa7cc; }
+  .splitter .tip { position: absolute; right: 0; bottom: -2px; font-size: 10px; opacity: .55; }
   .hint { font-size: 11px; opacity: .7; line-height: 1.5; }
   code { background: #16202c; padding: 1px 5px; border-radius: 5px; font-size: 11px; }
 </style>
@@ -62,6 +72,10 @@
   <button id="btn-frame">载入下方 iframe</button>
 </div>
 <iframe id="frame" title="url test" src="about:blank"></iframe>
+<div class="splitter" id="splitter" role="separator" aria-orientation="horizontal"
+     aria-label="拖动调整 iframe 高度" tabindex="0" title="拖动调整高度 · 双击复位">
+  <span class="tip" id="frame-height">190px</span>
+</div>
 <div class="hint">
   iframe 里显示 <code>ERR_…</code> 说明这次导航被 WebView/网络层拒绝（例如
   <code>net::ERR_CLEARTEXT_NOT_PERMITTED</code> = 安卓 9+ 默认禁止明文 HTTP）；

@@ -5,10 +5,13 @@ import java.io.File;
 import com.saysky.hotplugloader.api.HotContext;
 import com.saysky.hotplugloader.api.HotPlugin;
 import com.saysky.hotplugloader.api.HotPluginInfo;
-import com.saysky.ui.UiHost;
-import com.saysky.ui.api.CustomPage;
-import com.saysky.ui.api.Pages;
-import com.saysky.ui.api.TextButtonSpec;
+import com.saysky.ui.kit.Hover;
+import com.saysky.ui.kit.Pages;
+import com.saysky.ui.kit.Theme;
+import com.saysky.ui.kit.Ui;
+import com.saysky.ui.kit.UiButton;
+import com.saysky.ui.kit.UiMenu;
+import com.saysky.ui.kit.UiMount;
 
 /**
  * WebUI demo plugin.
@@ -39,6 +42,11 @@ public final class WebDemoPlugin implements HotPlugin {
 
     /** Plugin-owned page (host builds the native menu). */
     static final String PAGE_ID = "webdemo.page";
+
+    /** One mount for every pause-menu row (so the rows stack in registration order). */
+    private static UiMount pauseMount;
+    /** Demo panel (native Menu) — created on first use, never during init. */
+    private static UiMenu panelMenu;
 
     @Override
     public void init(HotContext context) {
@@ -75,6 +83,11 @@ public final class WebDemoPlugin implements HotPlugin {
 
             final String pid = context.id();
 
+            // 热重载 / 二次 init：先清掉上一次登记的行与面板（否则行会重复叠加）
+            Ui.unmountPlugin(pid);
+            pauseMount = null;
+            panelMenu = null;
+
             // 只挂在「剧本进行时」的暂停菜单(Esc)。主菜单留给其它插件(例如 Army3DWeb 的「3D 调试」)。
             // 每行都走 WebCore.openDialog → 游戏内 WebView,已实测可用。
             addPauseButton(pid, "Web UI", "index.html",
@@ -83,58 +96,31 @@ public final class WebDemoPlugin implements HotPlugin {
                     "HTTPS / \u660e\u6587 HTTP / \u56de\u73af 127.0.0.1 \u63a2\u6d4b");
             addPauseButton(pid, "\u6e38\u620f\u547d\u4ee4", "game.html",
                     "\u5411\u63a7\u5236\u53f0/\u4e8b\u4ef6\u5f15\u64ce\u53d1\u9001\u6307\u4ee4");
-            UiHost.addButton(pid, new TextButtonSpec() {
-                @Override
-                public String pageId() {
-                    return Pages.PAUSE.id();
-                }
-
-                @Override
-                public String label() {
-                    return "\u53cc\u7a97\u53e3";
-                }
-
-                @Override
-                public String tooltip() {
-                    return "\u540c\u4e00\u9875\u9762\u5f00\u4e24\u4e2a\u72ec\u7acb WebView \u7a97\u53e3";
-                }
-
-                @Override
-                public void onClick() {
-                    openTwoWindows(pid);
-                }
-            });
-
-            // CustomPage API 演示(host 生成的原生菜单)。暂停菜单里没有它的入口,
-            // 需要时用 UiHost.openPage("webdemo.page") 打开。
-            UiHost.addCustomPage(new CustomPage(PAGE_ID, "Web UI")
-                    .text("\u6253\u5f00\u7f51\u9875", new Runnable() {
-                        @Override
-                        public void run() {
-                            openWeb(pid, "index.html", "Web UI Demo");
-                        }
-                    })
-                    .text("\u7f51\u7edc\u81ea\u68c0", new Runnable() {
-                        @Override
-                        public void run() {
-                            openWeb(pid, "net.html", "\u7f51\u7edc\u81ea\u68c0");
-                        }
-                    })
-                    .text("\u6e38\u620f\u547d\u4ee4", new Runnable() {
-                        @Override
-                        public void run() {
-                            openWeb(pid, "game.html", "Game Cmd Test");
-                        }
-                    })
-                    .link("\u8fd4\u56de\u8bbe\u7f6e", Pages.SETTINGS.id())
-                    .text("\u53cc\u7a97\u53e3", new Runnable() {
+            pauseRow(pid, "\u53cc\u7a97\u53e3",
+                    "\u540c\u4e00\u9875\u9762\u5f00\u4e24\u4e2a\u72ec\u7acb WebView \u7a97\u53e3",
+                    new Runnable() {
                         @Override
                         public void run() {
                             openTwoWindows(pid);
                         }
-                    }));
+                    });
 
-            context.log("UiHost: " + UiHost.status());
+            // UiKit 面板演示：面板（原生 Menu + MenuTitle）同样必须延迟创建——
+            // init 早于字体烘焙，提前 new 原生控件会让字体初始化跳过语言包 charset。
+            pauseRow(pid, "Web UI \u9762\u677f",
+                    "\u6253\u5f00 UiKit \u81ea\u5efa\u9762\u677f(\u539f\u751f Menu)",
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                panel(pid).show();
+                            } catch (Throwable t) {
+                                contextLog("panel show failed: " + t);
+                            }
+                        }
+                    });
+
+            context.log("UiKit: mounts=" + UiMount.count());
         } catch (Throwable t) {
             context.log("WebCore/UI API unavailable (is LoaderSettings installed?): " + t);
         }
@@ -143,27 +129,82 @@ public final class WebDemoPlugin implements HotPlugin {
     /** 在「剧本进行时」的暂停菜单加一行,点击用游戏内 WebView 打开 {@code resources/web/<entry>}。 */
     private static void addPauseButton(final String pluginId, final String rowLabel, final String entry,
                                       final String tip) {
-        UiHost.addButton(pluginId, new TextButtonSpec() {
+        pauseRow(pluginId, rowLabel, tip, new Runnable() {
             @Override
-            public String pageId() {
-                return Pages.PAUSE.id();
-            }
-
-            @Override
-            public String label() {
-                return rowLabel;
-            }
-
-            @Override
-            public String tooltip() {
-                return tip;
-            }
-
-            @Override
-            public void onClick() {
+            public void run() {
                 openWeb(pluginId, entry, rowLabel);
             }
         });
+    }
+
+    /** Appends one row to the (single) pause-menu mount; the control is created lazily. */
+    private static void pauseRow(String pluginId, final String label, final String tip, final Runnable action) {
+        if (pauseMount == null) {
+            pauseMount = Ui.mountFirst(pluginId, Pages.PAUSE);
+        }
+        pauseMount.addRow(new UiMount.RowFactory() {
+            @Override
+            public aoc.kingdoms.lukasz.menu_element.MenuElement create(
+                    aoc.kingdoms.lukasz.menu.Menu target) {
+                return new UiButton(label, 0).onClick(action).tooltip(Hover.of(tip));
+            }
+        });
+    }
+
+    /** Lazily builds the demo panel (only on the GL thread, after fonts exist). */
+    private static UiMenu panel(final String pluginId) {
+        if (panelMenu != null) {
+            return panelMenu;
+        }
+        UiMenu p = Ui.panel("Web UI", 0);
+        final int rowW = Math.max(120, p.getWidth() - Theme.padding() * 4);
+        p.addAll(
+                new UiButton("\u6253\u5f00\u7f51\u9875", rowW).onClick(new Runnable() {
+                    @Override
+                    public void run() {
+                        openWeb(pluginId, "index.html", "Web UI Demo");
+                    }
+                }),
+                new UiButton("\u7f51\u7edc\u81ea\u68c0", rowW).onClick(new Runnable() {
+                    @Override
+                    public void run() {
+                        openWeb(pluginId, "net.html", "\u7f51\u7edc\u81ea\u68c0");
+                    }
+                }),
+                new UiButton("\u6e38\u620f\u547d\u4ee4", rowW).onClick(new Runnable() {
+                    @Override
+                    public void run() {
+                        openWeb(pluginId, "game.html", "Game Cmd Test");
+                    }
+                }),
+                new UiButton("\u53cc\u7a97\u53e3", rowW).onClick(new Runnable() {
+                    @Override
+                    public void run() {
+                        openTwoWindows(pluginId);
+                    }
+                }));
+        UiMenu.stack(p.elements(), Theme.padding() * 2, Theme.padding() * 2, rowW);
+        /* Explicit close row: the panel also has the native X in its title bar, but a demo
+           panel must never be able to trap the player (that was the "面板关不掉" report). */
+        p.add(new UiButton("\u5173\u95ed\u9762\u677f", rowW).onClick(new Runnable() {
+            @Override
+            public void run() {
+                if (panelMenu != null) {
+                    panelMenu.hide();
+                }
+            }
+        }));
+        UiMenu.stack(p.elements(), Theme.padding() * 2, Theme.padding() * 2, rowW);
+        p.sync();
+        panelMenu = p;
+        return p;
+    }
+
+    private static void contextLog(String msg) {
+        try {
+            com.saysky.ui.kit.Ui.log(msg);
+        } catch (Throwable ignored) {
+        }
     }
 
     private static void openWeb(String pluginId, String entry, String title) {

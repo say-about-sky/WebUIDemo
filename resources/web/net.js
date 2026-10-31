@@ -28,7 +28,9 @@
     fetch: document.getElementById('btn-fetch'),
     img: document.getElementById('btn-img'),
     frameBtn: document.getElementById('btn-frame'),
-    frame: document.getElementById('frame')
+    frame: document.getElementById('frame'),
+    splitter: document.getElementById('splitter'),
+    heightLabel: document.getElementById('frame-height')
   };
 
   var last = { report: '', results: [] };
@@ -251,6 +253,102 @@
   el.fetch.addEventListener('click', function () { runManual('fetch'); });
   el.img.addEventListener('click', function () { runManual('img'); });
   el.frameBtn.addEventListener('click', function () { runManual('frame'); });
+
+  /* ------------------------------------------------------------------
+   * Splitter: drag the grip under the iframe to resize it.
+   *
+   * Pointer Events (not mouse events) so it works with touch inside the game
+   * WebView; `touch-action: none` on the grip stops the page from scrolling while
+   * dragging. Height is remembered in localStorage, falls back to the CSS default.
+   * ------------------------------------------------------------------ */
+  (function initSplitter() {
+    var frame = el.frame;
+    var grip = el.splitter;
+    if (!frame || !grip) { return; }
+
+    var KEY = 'webdemo.net.frameHeight';
+    var DEFAULT_H = 190;
+    var MIN_H = 80;
+    var dragging = false;
+    var startY = 0;
+    var startH = 0;
+    var activeId = null;
+
+    function viewportH() {
+      return window.innerHeight || document.documentElement.clientHeight || 800;
+    }
+
+    function clampH(h) {
+      // Never let the frame eat the whole screen: leave room for the controls above.
+      var max = Math.max(160, Math.min(1400, Math.round(viewportH() * 1.4)));
+      return Math.max(MIN_H, Math.min(max, Math.round(h)));
+    }
+
+    function apply(h, persist) {
+      var v = clampH(h);
+      frame.style.height = v + 'px';
+      if (el.heightLabel) { el.heightLabel.textContent = v + 'px'; }
+      if (persist) {
+        try { localStorage.setItem(KEY, String(v)); } catch (e) { /* file:// may refuse */ }
+      }
+      return v;
+    }
+
+    function currentH() {
+      var r = frame.getBoundingClientRect();
+      return r && r.height > 0 ? r.height : DEFAULT_H;
+    }
+
+    try {
+      var saved = parseInt(localStorage.getItem(KEY) || '', 10);
+      apply(saved > 0 ? saved : DEFAULT_H, false);
+    } catch (e) {
+      apply(DEFAULT_H, false);
+    }
+
+    function onDown(e) {
+      dragging = true;
+      activeId = e.pointerId;
+      startY = e.clientY;
+      startH = currentH();
+      grip.classList.add('active');
+      try { grip.setPointerCapture(e.pointerId); } catch (err) { }
+      e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!dragging || (activeId !== null && e.pointerId !== activeId)) { return; }
+      apply(startH + (e.clientY - startY), false);
+      e.preventDefault();
+    }
+
+    function onUp(e) {
+      if (!dragging) { return; }
+      dragging = false;
+      grip.classList.remove('active');
+      try { grip.releasePointerCapture(e && e.pointerId); } catch (err) { }
+      activeId = null;
+      apply(currentH(), true);
+    }
+
+    grip.addEventListener('pointerdown', onDown);
+    /* Move/up live on window: pointer capture is not available everywhere (and fails for
+       synthetic pointers), so listening globally keeps the drag alive once the finger
+       leaves the 22px grip. */
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    // Bindings no longer needed since the drag is tracked globally.
+    grip.addEventListener('dblclick', function () { apply(DEFAULT_H, true); });
+    // Keyboard (desktop / a11y): arrow keys nudge, Home resets.
+    grip.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowUp') { apply(currentH() - 20, true); e.preventDefault(); }
+      else if (e.key === 'ArrowDown') { apply(currentH() + 20, true); e.preventDefault(); }
+      else if (e.key === 'Home') { apply(DEFAULT_H, true); e.preventDefault(); }
+    });
+
+    try { AOH3.log('net.html splitter ready, height=' + currentH()); } catch (e) { }
+  })();
 
   try { AOH3.log('net.html ready'); } catch (e) { }
 })();

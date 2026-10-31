@@ -30,6 +30,11 @@ def uiApiJarProp = findProperty('uiApiJar') as String
 def uiApiJar = uiApiJarProp ? file(uiApiJarProp)
         : file("${gameRoot}/LoaderSettings/out/ui-api.jar")
 
+// UiKit (com.saysky.ui.kit) 的签名引用游戏类（MenuElement / ButtonGame2 …），
+// 所以编译期必须能看到 game.jar；运行时由游戏本体提供，绝不打包。
+def gameJarProp = findProperty('gameJar') as String
+def gameJar = gameJarProp ? file(gameJarProp) : file("${gameRoot}/game.jar")
+
 sourceSets {
     main {
         java { srcDirs = ['src'] }
@@ -44,6 +49,9 @@ dependencies {
     if (uiApiJar.exists()) {
         compileOnly files(uiApiJar)
     }
+    if (gameJar.exists()) {
+        compileOnly files(gameJar)
+    }
 }
 
 tasks.named('compileJava') {
@@ -55,6 +63,10 @@ tasks.named('compileJava') {
         if (!uiApiJar.exists()) {
             throw new GradleException("ui-api.jar not found: ${uiApiJar}\n" +
                     '  build LoaderSettings first (LoaderSettings\\gradlew.bat dex) or pass -PuiApiJar=<jar>')
+        }
+        if (!gameJar.exists()) {
+            throw new GradleException("game.jar not found: ${gameJar}\n" +
+                    '  pass -PgameJar=<jar> or set AOH_GAME_ROOT')
         }
     }
 }
